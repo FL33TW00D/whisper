@@ -125,6 +125,7 @@ class DecodingResult:
     no_speech_prob: float = np.nan
     temperature: float = np.nan
     compression_ratio: float = np.nan
+    raw_logits: Optional[List[Tensor]] = None
 
 
 class Inference:
@@ -681,10 +682,12 @@ class DecodingTask:
         n_batch = tokens.shape[0]
         sum_logprobs: Tensor = torch.zeros(n_batch, device=audio_features.device)
         no_speech_probs = [np.nan] * n_batch
+        raw_logits = []
 
         try:
             for i in range(self.sample_len):
                 logits = self.inference.logits(tokens, audio_features)
+                raw_logits.append(logits.clone())
 
                 if (
                     i == 0 and self.tokenizer.no_speech is not None
@@ -707,11 +710,10 @@ class DecodingTask:
         finally:
             self.inference.cleanup_caching()
 
-        return tokens, sum_logprobs, no_speech_probs
+        return tokens, sum_logprobs, no_speech_probs, raw_logits
 
     @torch.no_grad()
     def run(self, mel: Tensor) -> List[DecodingResult]:
-        self.decoder.reset()
         tokenizer: Tokenizer = self.tokenizer
         n_audio: int = mel.shape[0]
 
@@ -734,7 +736,7 @@ class DecodingTask:
         tokens = tokens.repeat_interleave(self.n_group, dim=0).to(audio_features.device)
 
         # call the main sampling loop
-        tokens, sum_logprobs, no_speech_probs = self._main_loop(audio_features, tokens)
+        tokens, sum_logprobs, no_speech_probs, raw_logits = self._main_loop(audio_features, tokens)
 
         # reshape the tensors to have (n_audio, n_group) as the first two dimensions
         audio_features = audio_features[:: self.n_group]
@@ -760,7 +762,7 @@ class DecodingTask:
         avg_logprobs: List[float] = [
             lp / (len(t) + 1) for t, lp in zip(tokens, sum_logprobs)
         ]
-
+        
         fields = (
             texts,
             languages,
@@ -782,6 +784,7 @@ class DecodingTask:
                 no_speech_prob=no_speech_prob,
                 temperature=self.options.temperature,
                 compression_ratio=compression_ratio(text),
+                raw_logits = raw_logits,
             )
             for text, language, tokens, features, avg_logprob, no_speech_prob in zip(
                 *fields

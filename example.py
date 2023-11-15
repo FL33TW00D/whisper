@@ -1,17 +1,10 @@
 import whisper
+from pprint import pprint
 
-model = whisper.load_model("large")
+model = whisper.load_model("tiny")
 
-# load audio and pad/trim it to fit 30 seconds
-audio = whisper.load_audio("jfk.wav")
-audio = whisper.pad_or_trim(audio)
+options = dict(language="ja", task="translate", temperature=0, beam_size=1)
+result = model.transcribe(audio="erwin_jp.wav", **options)
 
-# make log-Mel spectrogram and move to the same device as the model
-mel = whisper.log_mel_spectrogram(audio)
+pprint(result)
 
-# decode the audio
-options = whisper.DecodingOptions(fp16=False, without_timestamps=False)
-result = whisper.decode(model, mel, options)
-
-# print the recognized text
-print(result)
