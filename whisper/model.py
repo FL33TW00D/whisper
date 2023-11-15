@@ -122,7 +122,7 @@ class ResidualAttentionBlock(nn.Module):
 
         n_mlp = n_state * 4
         self.mlp = nn.Sequential(
-            Linear(n_state, n_mlp), nn.GELU(), Linear(n_mlp, n_state)
+            Linear(n_state, n_mlp), nn.GELU(approximate="tanh"), Linear(n_mlp, n_state)
         )
         self.mlp_ln = LayerNorm(n_state)
 
@@ -159,8 +159,8 @@ class AudioEncoder(nn.Module):
         x : torch.Tensor, shape = (batch_size, n_mels, n_ctx)
             the mel spectrogram of the audio
         """
-        x = F.gelu(self.conv1(x))
-        x = F.gelu(self.conv2(x))
+        x = F.gelu(self.conv1(x), approximate="tanh")
+        x = F.gelu(self.conv2(x), approximate="tanh")
         x = x.permute(0, 2, 1)
 
         assert x.shape[1:] == self.positional_embedding.shape, "incorrect audio shape"
