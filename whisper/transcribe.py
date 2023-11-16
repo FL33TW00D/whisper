@@ -201,6 +201,7 @@ def transcribe(
     all_segments = []
     all_audio_features = [] #all audio_features
     raw_logits = []
+    raw_tokens = []
     prompt_reset_since = 0
 
     if initial_prompt is not None:
@@ -242,6 +243,7 @@ def transcribe(
             result: DecodingResult = decode_with_fallback(mel_segment)
             all_audio_features.append(result.audio_features.clone())
             raw_logits.append(result.raw_logits)
+            raw_tokens.append(result.raw_tokens)
             tokens = torch.tensor(result.tokens)
 
             if no_speech_threshold is not None:
@@ -384,6 +386,7 @@ def transcribe(
         language=language,
         all_audio_features=all_audio_features,
         raw_logits=raw_logits,
+        raw_tokens=raw_tokens,
     )
 
 
