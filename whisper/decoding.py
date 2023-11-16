@@ -103,12 +103,12 @@ class DecodingOptions:
 
     # list of tokens ids (or comma-separated token ids) to suppress
     # "-1" will suppress a set of symbols as defined in `tokenizer.non_speech_tokens()`
-    suppress_tokens: Optional[Union[str, Iterable[int]]] = "-1"
-    suppress_blank: bool = True  # this will suppress blank outputs
+    suppress_tokens: Optional[Union[str, Iterable[int]]] = None
+    suppress_blank: bool = False  # this will suppress blank outputs
 
     # timestamp sampling options
     without_timestamps: bool = False  # use <|notimestamps|> to sample text tokens only
-    max_initial_timestamp: Optional[float] = 1.0
+    max_initial_timestamp: Optional[float] = 5.0
 
     # implementation details
     fp16: bool = True  # use fp16 for most of the calculation
