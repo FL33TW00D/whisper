@@ -170,6 +170,10 @@ class AudioEncoder(nn.Module):
             x = block(x)
 
         x = self.ln_post(x)
+        """
+        serial = np.ascontiguousarray(x.detach().cpu().numpy())
+        np.save("jfk_large_encoder_output.npy", serial)
+        """
         return x
 
 
