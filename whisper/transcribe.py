@@ -199,6 +199,7 @@ def transcribe(
     )  # time per output token: 0.02 (seconds)
     all_tokens = []
     all_segments = []
+    all_logits = []
     prompt_reset_since = 0
 
     if initial_prompt is not None:
@@ -238,6 +239,7 @@ def transcribe(
 
             decode_options["prompt"] = all_tokens[prompt_reset_since:]
             result: DecodingResult = decode_with_fallback(mel_segment)
+            all_logits.extend(result.logits)
             tokens = torch.tensor(result.tokens)
 
             if no_speech_threshold is not None:
@@ -378,6 +380,7 @@ def transcribe(
         text=tokenizer.decode(all_tokens[len(initial_prompt_tokens) :]),
         segments=all_segments,
         language=language,
+        all_logits=all_logits,
     )
 
 

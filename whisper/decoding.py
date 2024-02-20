@@ -116,6 +116,7 @@ class DecodingOptions:
 
 @dataclass(frozen=True)
 class DecodingResult:
+    logits: List[Tensor]
     audio_features: Tensor
     language: str
     language_probs: Optional[Dict[str, float]] = None
@@ -681,10 +682,12 @@ class DecodingTask:
         n_batch = tokens.shape[0]
         sum_logprobs: Tensor = torch.zeros(n_batch, device=audio_features.device)
         no_speech_probs = [np.nan] * n_batch
+        all_logits = []
 
         try:
             for i in range(self.sample_len):
                 logits = self.inference.logits(tokens, audio_features)
+                all_logits.append(logits)
 
                 if (
                     i == 0 and self.tokenizer.no_speech is not None
@@ -697,7 +700,8 @@ class DecodingTask:
 
                 # apply the logit filters, e.g. for suppressing or applying penalty to
                 for logit_filter in self.logit_filters:
-                    logit_filter.apply(logits, tokens)
+                    #logit_filter.apply(logits, tokens)
+                    pass
 
                 # expand the tokens tensor with the selected next tokens
                 tokens, completed = self.decoder.update(tokens, logits, sum_logprobs)
@@ -707,7 +711,7 @@ class DecodingTask:
         finally:
             self.inference.cleanup_caching()
 
-        return tokens, sum_logprobs, no_speech_probs
+        return tokens, sum_logprobs, no_speech_probs, all_logits 
 
     @torch.no_grad()
     def run(self, mel: Tensor) -> List[DecodingResult]:
@@ -734,7 +738,7 @@ class DecodingTask:
         tokens = tokens.repeat_interleave(self.n_group, dim=0).to(audio_features.device)
 
         # call the main sampling loop
-        tokens, sum_logprobs, no_speech_probs = self._main_loop(audio_features, tokens)
+        tokens, sum_logprobs, no_speech_probs, logits = self._main_loop(audio_features, tokens)
 
         # reshape the tensors to have (n_audio, n_group) as the first two dimensions
         audio_features = audio_features[:: self.n_group]
@@ -768,12 +772,14 @@ class DecodingTask:
             audio_features,
             avg_logprobs,
             no_speech_probs,
+            [logits]
         )
         if len(set(map(len, fields))) != 1:
             raise RuntimeError(f"inconsistent result lengths: {list(map(len, fields))}")
 
         return [
             DecodingResult(
+                logits=logits,
                 audio_features=features,
                 language=language,
                 tokens=tokens,
@@ -783,7 +789,7 @@ class DecodingTask:
                 temperature=self.options.temperature,
                 compression_ratio=compression_ratio(text),
             )
-            for text, language, tokens, features, avg_logprob, no_speech_prob in zip(
+            for text, language, tokens, features, avg_logprob, no_speech_prob, logits in zip(
                 *fields
             )
         ]
