@@ -178,7 +178,6 @@ class TextDecoder(nn.Module):
         self, n_vocab: int, n_ctx: int, n_state: int, n_head: int, n_layer: int
     ):
         super().__init__()
-
         self.token_embedding = nn.Embedding(n_vocab, n_state)
         self.positional_embedding = nn.Parameter(torch.empty(n_ctx, n_state))
 
